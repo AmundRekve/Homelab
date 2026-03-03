@@ -9,16 +9,16 @@ In this git repo, I will be showing the projects I have going on at home. The co
 
 
 * Kubernetes
-Controller and 3 worker nodes
+- Controller and 3 worker nodes
 
 * WireGuard
-To connect to my environment from anywhere
+- To connect to my environment from anywhere
 
 * Pulse
-To monitor my containers and vm's outside of Kubernetes
+- To monitor my containers and vm's outside of Kubernetes
 
 * NextCloud
-A selfhosted dropbox to send things from my phone to my home or computer
+- A selfhosted dropbox to send things from my phone to my home or computer
 
 
 
