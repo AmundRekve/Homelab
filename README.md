@@ -9,6 +9,8 @@ In this git repo, I will be showing the projects I have going on at home. The co
 
 
 * Kubernetes - Controller and 3 worker nodes
+<img width="2686" height="557" alt="image" src="https://github.com/user-attachments/assets/4cc5cc80-d346-4c7b-bb55-dcdfa39585c8" />
+I just had to cross things out for my own safety
 
 * WireGuard - To connect to my environment from anywhere
 
