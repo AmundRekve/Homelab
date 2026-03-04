@@ -18,6 +18,6 @@ I just had to cross things out for my own safety
 
 * NextCloud - A selfhosted dropbox to send things from my phone to my home or computer
  
-
+*All of this is a work in progress, and I will continue to work on documenting as time goes.*
 
 
