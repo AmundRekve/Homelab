@@ -6,26 +6,30 @@ metadata:
 data:
   services.yaml: |
     - Homelab:
-        - Nextcloud:
-            icon: nextcloud
-            href: "http://192.168.0.240:30081"
-            description: "Dropbox"
-        - WireGuard:
-            icon: wireguard
-            href: "http://192.168.0.17:10086"
-            description: "VPN"
         - Proxmox:
             icon: proxmox
             href: "https://192.168.0.167:8006"
             description: "Hypervisor"
         - Kubernetes Dashboard:
             icon: kubernetes
-            href: "Not-in-use"
+            href: "https://192.168.0.167:8006/?console=shell&xtermjs=1&vmid=&vmname=&node=pve&cmd="
             description: "K8s UI"
+        - Nextcloud:
+            icon: nextcloud
+            href: "http://192.168.0.240:30081"
+            description: "Dropbox"
         - Pulse:
             icon: grafana
             href: "http://192.168.0.120:7655/hosts"
             description: "Monitoring"
+        - Wger:
+            icon: healthchecks
+            href: "http://192.168.0.241:32037"
+            description: "Workout tracker" 
+        - WireGuard:
+            icon: wireguard
+            href: "http://192.168.0.17:10086"
+            description: "VPN"
 
   bookmarks.yaml: |
     - Useful links:
