@@ -1,0 +1,114 @@
+# ============================================================
+#  Homelab-DAM — .gitignore
+#  This is a PUBLIC repository. Nothing below must ever be
+#  committed. When in doubt, do not commit it.
+# ============================================================
+
+# --- Kubernetes Secrets -------------------------------------
+# Real Secret manifests. Committed counterparts are *.example.yaml
+*secret*.yaml
+*secret*.yml
+*secrets*.yaml
+*secrets*.yml
+# The redacted templates are named *.yaml.example — deliberately NOT ending
+# in .yaml, so that `kubectl apply -R -f kubernetes/` cannot pick them up and
+# overwrite a live Secret with REPLACE_ME.
+!*-secret.yaml.example
+!*-secret.yml.example
+
+# --- Kubeconfigs / cluster credentials ----------------------
+kubeconfig
+kubeconfig*
+*.kubeconfig
+admin.conf
+.kube/
+kube-config*
+bootstrap-token*
+join-command*
+kubeadm-join*
+
+# --- Keys and certificates ----------------------------------
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.gpg
+*.asc
+*.age
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*.ppk
+authorized_keys
+known_hosts
+
+# --- VPN configs (WireGuard / Tailscale / OpenVPN) ----------
+# These contain PrivateKey / PresharedKey / auth keys
+wg*.conf
+wg*.json
+*.ovpn
+tailscale*.json
+tailscaled.state
+peer_*/
+
+# --- Environment / variable files ---------------------------
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+env.sh
+values-secret*.yaml
+*.local.yaml
+*.local.yml
+
+# --- Helm / Sealed Secrets / SOPS ---------------------------
+charts/*.tgz
+*.dec.yaml
+*.dec.yml
+.sops.tmp*
+sealed-secrets-key*.yaml
+
+# --- Infrastructure state -----------------------------------
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+ansible/inventory/hosts
+*vault_pass*
+.vault_pass
+
+# --- Backups and database dumps -----------------------------
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+backups/
+dump/
+
+# --- Logs and diagnostics (can contain tokens/hostnames) ----
+*.log
+logs/
+*-support-bundle*
+cluster-dump*/
+
+# --- Local scratch and editor noise -------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+scratch/
+tmp/
+notes-private*

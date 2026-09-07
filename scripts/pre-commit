@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Homelab pre-commit hook — last line of defence before a public push.
+# Install with: ./scripts/install-git-hooks.sh
+# Bypass (only when you are certain) with: git commit --no-verify
+set -uo pipefail
+
+fail=0
+red()  { printf '\033[31m%s\033[0m\n' "$*"; }
+yell() { red "BLOCKED: $*"; fail=1; }
+
+# Allow-list of strings that mark a value as a deliberate placeholder
+SAFE='example|changeme|change_me|placeholder|REPLACE_ME|redacted|dummy|<[^>]{1,80}>|\$\{|\$\(|secretKeyRef|valueFrom|configMapKeyRef'
+
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM)
+[ "${#staged[@]}" -eq 0 ] && exit 0
+
+# ---- 1. Filenames that must never be committed -------------------
+for f in "${staged[@]}"; do
+  case "$f" in
+    *.example.yaml|*.example.yml|*.example|*.sample) continue ;;
+  esac
+  case "$f" in
+    *secret*.yaml|*secret*.yml|*secrets*|\
+    *.key|*.pem|*.p12|*.pfx|*.jks|id_rsa*|id_ecdsa*|id_ed25519*|\
+    *kubeconfig*|*admin.conf|.env|.env.*|*.ovpn|wg*.conf|\
+    *.tfstate|*.tfvars|*vault_pass*|*.age|*.gpg)
+      yell "$f looks like a credential file" ;;
+  esac
+done
+
+# ---- 2. Credential-shaped content in the staged diff --------------
+added=$(git diff --cached --unified=0 | grep '^+' | grep -v '^+++')
+
+# 2a. High-confidence token shapes and inline assignments
+patterns=(
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  '(PrivateKey|PresharedKey)[[:space:]]*=[[:space:]]*[A-Za-z0-9+/]{20,}'
+  '(tskey-auth|tskey-api)-[A-Za-z0-9-]{10,}'
+  'gh[pousr]_[A-Za-z0-9]{20,}'
+  'AKIA[0-9A-Z]{16}'
+  'xox[baprs]-[A-Za-z0-9-]{10,}'
+  'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.'
+  '(PASSWORD|PASSWD|TOKEN|API_?KEY|SECRET_KEY|ACCESS_KEY)[A-Z_]*["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:]{$<][^"'"'"'[:space:]]{4,}'
+)
+for p in "${patterns[@]}"; do
+  hits=$(printf '%s\n' "$added" | grep -nEi -e "$p" | grep -viE "$SAFE" || true)
+  if [ -n "$hits" ]; then
+    yell "credential-shaped value in staged changes:"
+    printf '%s\n' "$hits" | head -5 | cut -c1-160 | sed 's/^/    /'
+  fi
+done
+
+# 2b. Kubernetes env form, where key and value sit on separate lines:
+#       - name: POSTGRES_PASSWORD
+#         value: <the password, in the clear>
+pairs=$(printf '%s\n' "$added" | awk '
+  /name:[[:space:]]*[A-Za-z0-9_]*(PASSWORD|PASSWD|TOKEN|SECRET|API_?KEY|APIKEY)/ { k=$0; hold=1; next }
+  hold && /value:[[:space:]]*[^[:space:]]/ { gsub(/^[+[:space:]]*/,"",k); print k " -> " $0; hold=0; next }
+  { hold=0 }
+' | grep -viE "$SAFE" || true)
+if [ -n "$pairs" ]; then
+  yell "plaintext credential in a Kubernetes env value (use secretKeyRef):"
+  printf '%s\n' "$pairs" | head -5 | cut -c1-160 | sed 's/^/    /'
+fi
+
+# ---- 3. gitleaks, if installed -----------------------------------
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner || fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  red ""
+  red "Commit aborted. This repository is PUBLIC."
+  red "If this is a false positive:  git commit --no-verify"
+  exit 1
+fi
+exit 0

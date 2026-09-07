@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: homepage
+data:
+  settings.yaml: |
+    title: Homelab
+    theme: dark
+    color: slate
+
+  bookmarks.yaml: ""
+
+  widgets.yaml: |
+    - resources:
+        cpu: true
+        memory: true
+
+  services.yaml: |
+    - Homelab:
+        - Proxmox:
+            href: http://192.168.0.167:8006
+            description: Hypervisor
+            icon: proxmox.png
+        - Nextcloud:
+            href: http://192.168.0.246
+            description: Dropbox
+            icon: nextcloud.png
+        - Wger:
+            href: http://192.168.0.248
+            description: Workout tracker
+            icon: wger.png
+        - Pulse:
+            href: http://192.168.0.120:7655
+            description: Monitoring
+            icon: grafana.png
+        - WireGuard:
+            href: http://192.168.0.17:10086
+            description: VPN
+            icon: wireguard.png
+        - Longhorn:
+            href: http://192.168.0.240:30772/#/dashboard
+            description: Storage
+            icon: longhorn.png
+
+  docker.yaml: ""
+  kubernetes.yaml: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: homepage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "*"
+
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+            - name: config
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
+            - name: config
+              mountPath: /app/config/docker.yaml
+              subPath: docker.yaml
+            - name: config
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: data
+              mountPath: /app/config/logs
+      volumes:
+        - name: config
+          configMap:
+            name: homepage-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: homepage-pvc

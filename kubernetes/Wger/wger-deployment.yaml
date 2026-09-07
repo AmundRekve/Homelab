@@ -1,0 +1,174 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: wger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: wger
+            - name: POSTGRES_USER
+              value: wger
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wger-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: wger-postgres-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: wger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wger
+  namespace: wger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wger
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wger
+    spec:
+      containers:
+        - name: wger
+          image: wger/server:latest
+          env:
+            # Never True on a reachable instance: Django debug pages expose
+            # the full settings object, including database credentials.
+            - name: DJANGO_DEBUG
+              value: "False"
+            - name: DJANGO_PERFORM_MIGRATIONS
+              value: "True"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wger-secret
+                  key: SECRET_KEY
+            - name: DJANGO_DB_ENGINE
+              value: django.db.backends.postgresql
+            - name: DJANGO_DB_DATABASE
+              value: wger
+            - name: DJANGO_DB_USER
+              value: wger
+            - name: DJANGO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wger-secret
+                  key: POSTGRES_PASSWORD
+            - name: DJANGO_DB_HOST
+              value: postgres
+            - name: DJANGO_DB_PORT
+              value: "5432"
+            - name: DJANGO_CACHE_BACKEND
+              value: django_redis.cache.RedisCache
+            - name: DJANGO_CACHE_LOCATION
+              value: redis://redis:6379/1
+            - name: DJANGO_CACHE_TIMEOUT
+              value: "1296000"
+            - name: DJANGO_CACHE_CLIENT_CLASS
+              value: django_redis.client.DefaultClient
+            - name: CELERY_BROKER
+              value: redis://redis:6379/2
+            - name: CELERY_BACKEND
+              value: redis://redis:6379/2
+            - name: WGER_PORT
+              value: "80"
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: media
+              mountPath: /home/wger/media
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: wger-media-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery
+  namespace: wger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+        - name: celery
+          image: wger/server:latest
+          command: ["/bin/sh", "-c"]
+          args: ["celery -A wger worker --loglevel=info"]
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wger-secret
+                  key: SECRET_KEY
+            - name: DJANGO_DB_ENGINE
+              value: django.db.backends.postgresql
+            - name: DJANGO_DB_DATABASE
+              value: wger
+            - name: DJANGO_DB_USER
+              value: wger
+            - name: DJANGO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wger-secret
+                  key: POSTGRES_PASSWORD
+            - name: DJANGO_DB_HOST
+              value: postgres
+            - name: DJANGO_DB_PORT
+              value: "5432"
+            - name: CELERY_BROKER
+              value: redis://redis:6379/2
+            - name: CELERY_BACKEND
+              value: redis://redis:6379/2

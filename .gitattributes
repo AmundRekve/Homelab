@@ -1,0 +1,13 @@
+# Normalise line endings. Without this, a Windows checkout (autocrlf=true)
+# rewrites the shell hooks with CRLF and bash fails on the stray \r.
+* text=auto
+
+# Must stay LF — these are executed, not just read
+*.sh            text eol=lf
+scripts/*       text eol=lf
+*.yaml          text eol=lf
+*.yml           text eol=lf
+
+# Mark generated/vendored files so they don't pollute diffs
+*.png           binary
+*.jpg           binary

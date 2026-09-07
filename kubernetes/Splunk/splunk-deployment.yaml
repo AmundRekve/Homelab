@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: splunk
+  namespace: splunk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: splunk
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: splunk
+    spec:
+      containers:
+        - name: splunk
+          image: splunk/splunk:latest
+          env:
+            - name: SPLUNK_START_ARGS
+              value: "--accept-license"
+            - name: SPLUNK_GENERAL_TERMS
+              value: "--accept-sgt-current-at-splunk-com"
+            - name: SPLUNK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: splunk-secret
+                  key: SPLUNK_PASSWORD
+            - name: SPLUNK_LICENSE_URI
+              value: "Free"
+            # Syslog on 1514, not 514: splunkd runs unprivileged and cannot
+            # bind a port below 1024 ("Permission denied"). The Service maps
+            # the router-facing port 514 to this one, so nothing changes for
+            # the router.
+            - name: SPLUNK_ADD
+              value: "udp 1514"
+          ports:
+            - name: web
+              containerPort: 8000
+            - name: hec
+              containerPort: 8088
+            - name: syslog-udp
+              containerPort: 1514
+              protocol: UDP
+            - name: mgmt
+              containerPort: 8089
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: splunk-etc
+              mountPath: /opt/splunk/etc
+            - name: splunk-var
+              mountPath: /opt/splunk/var
+          # First-time provisioning runs Ansible and builds the indexes; on
+          # Longhorn-backed storage that regularly takes 5-10 minutes. The
+          # startupProbe holds readiness AND liveness off until Splunk answers
+          # once, so setup cannot be killed halfway through and restarted in a
+          # loop. 60 x 15s = up to 15 minutes.
+          startupProbe:
+            httpGet:
+              path: /en-US/account/login
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /en-US/account/login
+              port: 8000
+            periodSeconds: 15
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /en-US/account/login
+              port: 8000
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: splunk-etc
+          persistentVolumeClaim:
+            claimName: splunk-etc-pvc
+        - name: splunk-var
+          persistentVolumeClaim:
+            claimName: splunk-var-pvc
