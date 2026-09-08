@@ -237,17 +237,7 @@ After `kubeadm init` completes, it will print a `kubeadm join` command. Run that
 
 ---
 
-### 🔐 Security
 
-This repository is public, so no credentials live in it. Every password is read
-from a Kubernetes Secret via `secretKeyRef`; each service ships a redacted
-`*-secret.yaml.example` template while the real Secret stays untracked.
-
-Three layers keep it that way: the root `.gitignore`, a local pre-commit hook
-(`./scripts/install-git-hooks.sh`), and a `gitleaks` GitHub Actions workflow
-that scans the full history on every push.
-
-See [SECURITY.md](./SECURITY.md) for details.
 
 ## 📌 Notes
 
